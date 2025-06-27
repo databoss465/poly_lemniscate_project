@@ -21,7 +21,7 @@ def display_lemniscate (roots: list[complex], bound: float = 1.0,
     p = np.poly1d(coeffs)
     p_str = " + ".join([f"({c})x^{i}" if i > 0 else f"({c})" 
                  for i, c in zip(range(len(coeffs)-1, -1, -1), coeffs)])
-    print(f"Polynomial: " + p_str)
+    # print(f"Polynomial: " + p_str)
 
     # Create a grid of complex numbers
     x = np.linspace(xlim[0], xlim[1], res)
@@ -31,38 +31,79 @@ def display_lemniscate (roots: list[complex], bound: float = 1.0,
 
     # Evaluate the polynomial on the grid
     mod_P = np.abs(p(Z))
-    print(f"Min: {np.min(mod_P)}, Max: {np.max(mod_P)}")
+    # print(f"Min: {np.min(mod_P)}, Max: {np.max(mod_P)}")
+
+    roots_re = [root.real for root in roots]
+    roots_im = [root.imag for root in roots]
+
+    root_info = root_info = "\n".join([f"{r.real:.3f} + {r.imag:.3f}j" for r in roots])
 
     # Plot the lemniscate
     plt.figure(figsize=(2*(xlim[1] - xlim[0]), 2*(ylim[1] - ylim[0])))
     plt.contour(X, Y, mod_P, levels=[bound], colors='blue')
-    plt.title(f"{bound}-Lemniscate of {p_str}")
+    plt.scatter(roots_re, roots_im, color='red', label='Roots', s=25)
+
+    plt.title(f"Lemniscate #{count}")
     plt.xlabel("Re(z)")
     plt.ylabel("Im(z)")
     plt.axis('equal')
     plt.grid(True)
-    plt.savefig(path + f"lemniscate_plot{count}.png")
+
+    plt.gca().text( 1.05, 0.95,
+                    f"Roots:\n{root_info}",
+                    transform=plt.gca().transAxes,
+                    fontsize=8,
+                    verticalalignment='top',
+                    bbox=dict(boxstyle="round", facecolor='white', alpha=0.8))
+
+    plt.savefig(path + f"lemniscate_plot{count}.png", bbox_inches='tight')
     plt.close()
 
-def standard_lemniscate(n: int, start: int, end: int, step: int, count = 0):
+def root_generator (root_positions: list[tuple[float, float]]):
     """
-    Generate and display the lemniscate for roots on the unit circle
-    separated by integral multiples of pi/n.
-
-    Parameters:
-    - n: multiplier for the space between roots
-    - start: Starting index for the roots
-    - end: Ending index for the roots
-    - step: Step size for the roots
+    Since we restrict roots to lie on the unit circle, we can 
+    genrate the roots taking one input parameter theta for each root
     """
-    roots = [np.exp(1j * np.pi / n * k) for k in range(start, end, step)]
-    display_lemniscate(roots, bound=1, count=count)
-    return
+    assert all(0 <= pos[0] <= 1 for pos in root_positions), "r values must be in the range [0, 1]"
+    assert all(0 <= pos[1] <= 1 for pos in root_positions), "Theta values must be in the range [0, 1]"
 
+    return [pos[0] * np.exp(2 * np.pi * 1j * pos[1]) for pos in root_positions]   
 
-# count = 5
-# roots = [1, 1j, -1, -1j]
-# display_lemniscate(roots, bound=1, count=count)
+n = 5
+degree = np.random.randint(7, 17)
+print(degree)
+for count in range(0, n):
 
-standard_lemniscate(4, 0, 8, 1, count=6)
+    if count == 0:
+        # Roots are evenly spaced on the unit circle
+        # degree, r = 6, 1
+        roots = [np.exp(2 * np.pi * 1j * k/ degree) for k in range(0, degree)]
+
+    elif count == 1:
+        # Roots are evenly spaced on the unit circle with a small random perturbation
+        # degree, r = 6, 1
+        del_theta = np.random.uniform(-0.005, 0.005, degree)
+        roots = [np.exp((2 * np.pi * 1j * k / degree) + del_theta[k]) for k in range(0, degree)]
+
+    elif count <= n//2:
+        # Roots have a unfiormly random distribution on the unit circle
+        # degree = np.random.randint(1, 25)
+        r = np.random.uniform(0, 1, degree)
+        theta = np.random.uniform(0, 1, degree)
+        root_positions = list(zip(r, theta))
+        roots = root_generator(root_positions)
+    
+    else:
+        # Roots have a unfiromly random distribution in the unit disk
+        # degree = np.random.randint(1, 25)
+        r = [1] * degree
+        theta = np.random.uniform(0, 1, degree)
+        root_positions = list(zip(r, theta))
+        roots = root_generator(root_positions)
+
+    # print(degree)
+    display_lemniscate(roots, count=(n+count))
+
+print("Plots generated")
+
 
