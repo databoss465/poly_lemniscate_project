@@ -1,5 +1,9 @@
+import os
+import json
 import numpy as np
+import pandas as pd
 from utils import *
+
 
 def grid_approx (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), res=1000):
     """
@@ -24,3 +28,19 @@ def grid_approx (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), res=1000):
     
     # Approximate area of the lemniscate
     return (inside_points / total_points) * area_box
+
+if __name__ == "__main__":
+    path = "poly_lemniscate_project/Samples/samples_0628-0045.json"
+    samples = load_viewing_samples(path)
+    starting_degree = len(samples[0][0])  # Degree of the first sample
+
+    areas = {}
+
+    for i, deg_samples in enumerate(samples):
+        areas[i+starting_degree] = []
+        for j, roots in enumerate(deg_samples):
+            area = grid_approx(roots)
+            areas[i+starting_degree].append(area)
+
+    print(areas)
+
