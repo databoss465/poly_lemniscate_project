@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from utils import *
 
 def display_lemniscate (roots: list[complex], bound: float = 1.0, 
                         xlim: tuple = (-2, 2), ylim: tuple = (-2, 2), res: int = 1000,
@@ -16,22 +17,8 @@ def display_lemniscate (roots: list[complex], bound: float = 1.0,
     - path: Path to save the plot images, default set to "poly_lemniscate_project/Images/"
     - count: Counter for naming the saved plot images, default set to 0
     """
-    #Create the polynomial from the roots
-    coeffs = np.poly(roots)
-    p = np.poly1d(coeffs)
-    p_str = " + ".join([f"({c})x^{i}" if i > 0 else f"({c})" 
-                 for i, c in zip(range(len(coeffs)-1, -1, -1), coeffs)])
-    # print(f"Polynomial: " + p_str)
 
-    # Create a grid of complex numbers
-    x = np.linspace(xlim[0], xlim[1], res)
-    y = np.linspace(ylim[0], ylim[1], res)
-    X, Y = np.meshgrid(x, y)
-    Z = X + 1j * Y
-
-    # Evaluate the polynomial on the grid
-    mod_P = np.abs(p(Z))
-    # print(f"Min: {np.min(mod_P)}, Max: {np.max(mod_P)}")
+    X, Y, mod_P = grid_evaluate_pol(roots, xlim=xlim, ylim=ylim, res=res)
 
     roots_re = [root.real for root in roots]
     roots_im = [root.imag for root in roots]
@@ -59,51 +46,88 @@ def display_lemniscate (roots: list[complex], bound: float = 1.0,
     plt.savefig(path + f"lemniscate_plot{count}.png", bbox_inches='tight')
     plt.close()
 
-def root_generator (root_positions: list[tuple[float, float]]):
-    """
-    Since we restrict roots to lie on the unit circle, we can 
-    genrate the roots taking one input parameter theta for each root
-    """
-    assert all(0 <= pos[0] <= 1 for pos in root_positions), "r values must be in the range [0, 1]"
-    assert all(0 <= pos[1] <= 1 for pos in root_positions), "Theta values must be in the range [0, 1]"
+# n = 5
+# degree = np.random.randint(7, 17)
+# print(degree)
+# for count in range(0, n):
 
-    return [pos[0] * np.exp(2 * np.pi * 1j * pos[1]) for pos in root_positions]   
+#     if count == 0:
+#         # Roots are evenly spaced on the unit circle
+#         roots = root_generator_circle([k / degree for k in range(0, degree)])
 
-n = 5
-degree = np.random.randint(7, 17)
-print(degree)
-for count in range(0, n):
+#     elif count == 1:
+#         # Roots are evenly spaced on the unit circle with a small random perturbation
+#         # degree, r = 6, 1
+#         roots = root_generator_circle([k / degree for k in range(0, degree)])
+#         roots = perturb_roots(roots) #default perturbation is set to 0.005
 
-    if count == 0:
-        # Roots are evenly spaced on the unit circle
-        # degree, r = 6, 1
-        roots = [np.exp(2 * np.pi * 1j * k/ degree) for k in range(0, degree)]
-
-    elif count == 1:
-        # Roots are evenly spaced on the unit circle with a small random perturbation
-        # degree, r = 6, 1
-        del_theta = np.random.uniform(-0.005, 0.005, degree)
-        roots = [np.exp((2 * np.pi * 1j * k / degree) + del_theta[k]) for k in range(0, degree)]
-
-    elif count <= n//2:
-        # Roots have a unfiormly random distribution on the unit circle
-        # degree = np.random.randint(1, 25)
-        r = np.random.uniform(0, 1, degree)
-        theta = np.random.uniform(0, 1, degree)
-        root_positions = list(zip(r, theta))
-        roots = root_generator(root_positions)
+#     elif count <= n//2:
+#         # Roots have a unfiormly random distribution on the unit circle
+#         # degree = np.random.randint(1, 25)
+#         roots = root_generator_circle(np.random.uniform(0, 1, degree))
     
-    else:
-        # Roots have a unfiromly random distribution in the unit disk
-        # degree = np.random.randint(1, 25)
-        r = [1] * degree
-        theta = np.random.uniform(0, 1, degree)
-        root_positions = list(zip(r, theta))
-        roots = root_generator(root_positions)
+#     else:
+#         # Roots have a unfiromly random distribution in the unit disk
+#         # degree = np.random.randint(1, 25)
+#         r = [1] * degree
+#         theta = np.random.uniform(0, 1, degree)
+#         root_positions = list(zip(r, theta))
+#         roots = root_generator_disk(root_positions)
 
-    # print(degree)
-    display_lemniscate(roots, count=(n+count))
+#     # print(degree)
+#     display_lemniscate(roots, count=(n+count))
 
-print("Plots generated")
+# print("Plots generated")
 
+def display_viewing_samples(samples, sample_name, xlim=(-2, 2), ylim=(-2, 2), res=1000, path="poly_lemniscate_project/Images/"):
+    """
+    Display the 5x6 viewing samples of lemniscates.
+
+    Parameters:
+    - samples: List of samples to display; must come from generate_viewing_samples.
+    - xlim, ylim: The limits for the x and y axes.
+    - res: Resolution of the grid for plotting.
+    """
+    assert len(samples) == 5, "Samples must contain 5 sets of lemniscates."
+    
+    for i, deg_samples in enumerate(samples):
+        assert len(deg_samples) == 6, f"Each sample set must contain 6 lemniscates, found {len(deg_samples)} in set {i+1}."
+        
+    rows, cols = 5, 6
+    fig, axes = plt.subplots(rows, cols, figsize=(3 * cols, 3 * rows))
+    filepath = os.path.join(path, f"{sample_name}.png")
+
+    for i in range(rows):
+        for j in range(cols):
+            ax = axes[i, j] 
+            roots = samples[i][j]
+            X, Y, mod_P = grid_evaluate_pol(roots, xlim=xlim, ylim=ylim, res=res)
+            roots_re = [root.real for root in roots]
+            roots_im = [root.imag for root in roots]
+            # Plotting
+            ax.contour(X, Y, mod_P, levels=[1.0], colors='blue', linewidths=0.5)
+            ax.scatter(roots_re, roots_im, color='red', label='Roots', s=4)
+            #Config
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
+            # ax.set_xticks([])
+            # ax.set_yticks([])
+            ax.set_xticks(np.linspace(xlim[0], xlim[1], 5))
+            ax.set_yticks(np.linspace(ylim[0], ylim[1], 5))
+            ax.tick_params(labelbottom=False, labelleft=False)  # Hides tick labels
+            ax.grid(True)
+            ax.set_aspect('equal')
+
+    plt.tight_layout()
+    plt.savefig(filepath, dpi=300)
+    plt.close(fig)
+
+if __name__ == "__main__":
+    # Example usage
+    samples, sample_name = generate_viewing_samples(15, save=True)
+    display_viewing_samples(samples, sample_name)
+
+
+
+    
 
