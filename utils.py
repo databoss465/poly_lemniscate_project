@@ -133,6 +133,24 @@ def save_viewing_samples (samples, path="poly_lemniscate_project/Samples/"):
 
     return filename
 
+def load_viewing_samples (path):
+    with open(path, 'r') as f:
+        data = json.load(f)
+        # print(data.keys())
+        # print(data['deg_11'])
+
+    samples = []
+    for deg_key in data.keys():
+        deg_samples = []
+        for root_list in data[deg_key]:
+            roots = []
+            for root in root_list:
+                roots.append(complex(root[0], root[1]))
+            deg_samples.append(roots)
+        samples.append(deg_samples)
+
+    return samples
+
 if __name__ == "__main__":
     # Example usage
     samples, name = generate_viewing_samples(15, save=True)
