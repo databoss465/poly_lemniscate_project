@@ -56,6 +56,7 @@ def grid_evaluate_pol (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), res=100
     y = np.linspace(ylim[0], ylim[1], res)
     X, Y = np.meshgrid(x, y)
     Z = X + 1j * Y
+    # print(len(Z), len(Z[0]))
     p = mk_pol(roots)
     mod_P = np.abs(p(Z))
     return X, Y, mod_P
