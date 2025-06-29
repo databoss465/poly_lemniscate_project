@@ -24,7 +24,7 @@ def root_generator_circle (root_positions: list[float]):
 
 def perturb_roots (roots, perturbation=0.005):
     """
-    Apply a small random perturbation to the roots.
+    Apply a small angular random perturbation to the roots.
     """
     del_theta = np.random.uniform(-perturbation, perturbation, len(roots))
     return [root * np.exp(del_theta[k] * 1j) for k, root in enumerate(roots)]
