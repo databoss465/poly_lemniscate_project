@@ -97,11 +97,47 @@ def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), 
     
     return area
 
+# C++ Hybrid Adaptive Mesh Refinement implementation
+
+lib_amr = ctypes.CDLL("poly_lemniscate_project/libamr.so")
+lib_amr.hybrid_amr_estimate.restype = ctypes.c_double
+lib_amr.hybrid_amr_estimate.argtypes = [
+    ctypes.POINTER(ctypes.c_double),  # pointer to roots_re
+    ctypes.POINTER(ctypes.c_double),  # pointer to roots_im
+    ctypes.c_int,                     # degree
+    ctypes.c_double, ctypes.c_double, # xmin, xmax
+    ctypes.c_double, ctypes.c_double, # ymin, ymax
+    ctypes.c_int,                     # init_divs
+    ctypes.c_double,                  # min_cell_size
+    ctypes.c_int                      # max_depth
+]
+
+def hybrid_amr_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), init_divs=9,
+                     min_cell_size=1e-3, max_depth=5):
+    """
+    Estimate the area of the lemniscate using a hybrid adaptive mesh refinement technique with C++ implementation.
+    This function does a pre-tiling, i.e. divides the area into `init_divs` squares, and then refines the mesh recursively
+    based on corners and midpoint until the cell size is less than `min_cell_size` or the maximum depth is reached.
+    """ 
+    degree = len(roots)
+    roots_re = np.array([r.real for r in roots], dtype=np.double)
+    roots_im = np.array([r.imag for r in roots], dtype=np.double)
+
+    area = lib_amr.hybrid_amr_estimate(
+        roots_re.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        roots_im.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        degree, xlim[0], xlim[1], ylim[0], ylim[1],
+        init_divs, min_cell_size, max_depth)
+
+    return area
+
+
 if __name__ == "__main__":
     filepath = "poly_lemniscate_project/Samples"
     filename = "samples_0628-0045"
     samples = load_viewing_samples(os.path.join(filepath, f"{filename}.json"))
     starting_degree = len(samples[0][0])  # Degree of the first sample
+
 
     for n in [1e4, 6.25e4, 2.5e5, 1e6, 4e6, 1e7]:
 
@@ -115,13 +151,14 @@ if __name__ == "__main__":
                 # area = grid_estimate(roots, res=res)
                 # area = monte_carlo_estimate(roots, n_pts=int(n))
                 area = monte_carlo_estimate_cpp(roots, n_pts=int(n))
+                # area = hybrid_amr_cpp(roots, max_depth=11, min_cell_size=s)
                 areas[i].append(area)
         t = time.time() - t
         print(f"Total time: {t:.4f}s || Average time per lemniscate : {t / 30:.4f}s")
 
         df = pd.DataFrame(areas).T
         df.to_csv(os.path.join(filepath, f"{filename}_{n}pts_cpp.csv"), index=True, header=False)
-        print(f"Areas saved to {os.path.join(filepath, f'{filename}_{n}pts.csv')}")
+        print(f"Areas saved")
 
 # From initial testing, at the same number of points, Monte Carlo seems slower than grid estimation, but it is proably more accurate.
 # In theory, we know the uncertainty of the Monte Carlo estimate, and with a million points, it was found to be ~0.3% and takes about 0.06-0.07s
