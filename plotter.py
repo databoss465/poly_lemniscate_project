@@ -123,9 +123,23 @@ def display_viewing_samples(samples, sample_name, xlim=(-2, 2), ylim=(-2, 2), re
     plt.close(fig)
 
 if __name__ == "__main__":
-    # Example usage
-    samples, sample_name = generate_viewing_samples(15, save=True)
-    display_viewing_samples(samples, sample_name)
+    # samples, sample_name = generate_viewing_samples(15, save=True)
+    # display_viewing_samples(samples, sample_name)
+    deg = 25
+    root_pos = [k / deg for k in range(0, deg)]
+    print(f"Original: {root_pos}" + "\n")
+    l = list(range(2,len(root_pos)-1))
+    j = np.random.choice(l, deg//2)
+    for h in j:
+        root_pos[h] += np.random.uniform(-0.05, 0.05)
+    print(f"Perturbed: {root_pos}" "\n")
+    roots = root_generator_circle(root_pos)
+    display_lemniscate(roots, count=12)
+    canonical_pos = canonical (root_pos)
+    print(f"Canonical: {canonical_pos}")
+    roots = root_generator_circle(canonical_pos)
+    display_lemniscate(roots, count=13)
+
 
 
 

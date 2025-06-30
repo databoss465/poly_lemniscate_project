@@ -9,8 +9,8 @@ def root_generator_disk (root_positions: list[tuple[float, float]]):
     Generate roots that are uniformly distributed in the unit disk.
     Each root is represented by a tuple (r, theta)
     """
-    assert all(0 <= pos[0] <= 1 for pos in root_positions), "r values must be in the range [0, 1]"
-    assert all(0 <= pos[1] <= 1 for pos in root_positions), "Theta values must be in the range [0, 1]"
+    assert all(0 <= pos[0] < 1 for pos in root_positions), "r values must be in the range [0, 1)"
+    assert all(0 <= pos[1] < 1 for pos in root_positions), "Theta values must be in the range [0, 1)"
 
     return [pos[0] * np.exp(2 * np.pi * 1j * pos[1]) for pos in root_positions]
 
@@ -119,8 +119,8 @@ def save_viewing_samples (samples, path="poly_lemniscate_project/Samples/"):
     filepath = os.path.join(path, f"{filename}.json")
 
     root_dict = {}
-    start = len(samples[0][0])  # Degree of the first sample
-    degs = range(start, start + 9, 2)
+    rot_offset = len(samples[0][0])  # Degree of the first sample
+    degs = range(rot_offset, rot_offset + 9, 2)
     for deg_idx, degree_samples in zip(degs, samples):
         root_dict[f"deg_{deg_idx}"] = []
         for sample in degree_samples:
@@ -152,11 +152,42 @@ def load_viewing_samples (path):
 
     return samples
 
+def canonical (root_positions: list[float]):
+    """
+    Given root positions on the unit circle, convert them to the canonical form, 
+    i.e., fix the location of the pair of farthest roots; with one of them at `z=1` and the other acw from it.
+    """
+    assert all(0 <= pos < 1 for pos in root_positions), "Theta values must be in the range [0, 1)"
+
+    if len(root_positions) < 2:
+        return root_positions
+
+    root_positions.sort()
+    max_dist = float('-inf')
+    rot_offset = float('-inf')
+    for i in range(len(root_positions)):
+        if i == len(root_positions)-1:
+            gap = 1 + root_positions[0] - root_positions[i] 
+        else:
+            gap = root_positions[i+1] - root_positions[i]
+        if gap > max_dist:
+            max_dist = gap
+            rot_offset = root_positions[i]
+    # print(f"Max gap: {max_dist} at root {rot_offset}")
+
+    # Rotate the list so that the farthest pair starts at 1
+    for i, _ in enumerate(root_positions):
+        # print(f"root_positions[{i}]: {root_positions[i]}")
+        root_positions[i] -= rot_offset
+        # print(f"root_positions[{i}]: {root_positions[i]}")
+        if root_positions[i] < 0:
+            root_positions[i] += 1
+
+    return sorted(root_positions)
+
 if __name__ == "__main__":
-    # Example usage
-    samples, name = generate_viewing_samples(15, save=True)
-    print(f"Samples generated and saved as {name}")
-    samples2 = generate_viewing_samples(10)
+    print("Utility functions")
+
 
 
 
