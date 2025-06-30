@@ -1,5 +1,6 @@
 import os
 import json
+import ctypes
 import numpy as np
 import pandas as pd
 from utils import *
@@ -57,6 +58,45 @@ def monte_carlo_estimate (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pt
 
     return area, stdev
 
+# C++ Monte Carlo implementation
+lib = ctypes.CDLL("poly_lemniscate_project/libmontecarlo.so")
+lib.monte_carlo_estimate.restype = ctypes.c_double
+lib.monte_carlo_estimate.argtypes = [
+    ctypes.POINTER (ctypes.c_double),  # pointer to roots_re 
+    ctypes.POINTER (ctypes.c_double),  # pointer to roots_im
+    ctypes.c_int,                      # degree
+    ctypes.c_double, ctypes.c_double,  # xmin, xmax
+    ctypes.c_double, ctypes.c_double,  # ymin, ymax
+    ctypes.c_int                       # n_pts
+]
+
+def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pts=10**6):
+    """
+    Estimate the area of the lemniscate using Monte Carlo method with C++ implementation.
+
+    Parameters:
+    - roots: List of complex roots of the polynomial.
+    - xlim, ylim: The limits for the x and y axes.
+    - n_pts: Number of random samples to generate.
+
+    Returns:
+    - area: Estimated area of the lemniscate.
+    """
+    degree = len(roots)
+    roots_re = np.array([r.real for r in roots], dtype=np.double)
+    roots_im = np.array([r.imag for r in roots], dtype=np.double)
+
+    area = lib.monte_carlo_estimate(
+        roots_re.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        roots_im.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        degree,
+        xlim[0], xlim[1],
+        ylim[0], ylim[1],
+        n_pts
+    )
+    
+    return area
+
 if __name__ == "__main__":
     filepath = "poly_lemniscate_project/Samples"
     filename = "samples_0628-0045"
@@ -74,15 +114,16 @@ if __name__ == "__main__":
             for j, roots in enumerate(deg_samples):
                 # area = grid_estimate(roots, res=res)
                 # area = monte_carlo_estimate(roots, n_pts=int(n))
-                areas[i].append(monte_carlo_estimate(roots, n_pts=int(n)))
+                area = monte_carlo_estimate_cpp(roots, n_pts=int(n))
+                areas[i].append(area)
         t = time.time() - t
         print(f"Total time: {t:.4f}s || Average time per lemniscate : {t / 30:.4f}s")
 
         df = pd.DataFrame(areas).T
-        df.to_csv(os.path.join(filepath, f"{filename}_{n}pts.csv"), index=True, header=False)
+        df.to_csv(os.path.join(filepath, f"{filename}_{n}pts_cpp.csv"), index=True, header=False)
         print(f"Areas saved to {os.path.join(filepath, f'{filename}_{n}pts.csv')}")
 
-# From initial testing, at the same number of points, Monte Carlo seems slower than grid estimation, but it is proably more accurate for larger areas.
+# From initial testing, at the same number of points, Monte Carlo seems slower than grid estimation, but it is proably more accurate.
 # In theory, we know the uncertainty of the Monte Carlo estimate, and with a million points, it was found to be ~0.3% and takes about 0.06-0.07s
 # However in theory, the uncertainty with the grid estimate increases with the resolution, so I don't find it feasible.
 # Especially assuming that our transformer will be very sensitive to the area of the lemniscates
