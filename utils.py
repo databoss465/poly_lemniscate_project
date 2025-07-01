@@ -18,7 +18,7 @@ def root_generator_circle (root_positions: list[float]):
     """
     Generate roots that are uniformly distributed on the unit circle.
     """
-    assert all(0 <= pos <= 1 for pos in root_positions), "Theta values must be in the range [0, 1]"
+    assert all(0 <= pos < 1 for pos in root_positions), "Theta values must be in the range [0, 1)"
     
     return [np.exp(2 * np.pi * 1j * pos) for pos in root_positions]
 
@@ -184,6 +184,8 @@ def canonical (root_positions: list[float]):
             root_positions[i] += 1
 
     return sorted(root_positions)
+    
+
 
 if __name__ == "__main__":
     print("Utility functions")

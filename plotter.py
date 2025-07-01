@@ -46,38 +46,6 @@ def display_lemniscate (roots: list[complex], bound: float = 1.0,
     plt.savefig(path + f"lemniscate_plot{count}.png", bbox_inches='tight')
     plt.close()
 
-# n = 5
-# degree = np.random.randint(7, 17)
-# print(degree)
-# for count in range(0, n):
-
-#     if count == 0:
-#         # Roots are evenly spaced on the unit circle
-#         roots = root_generator_circle([k / degree for k in range(0, degree)])
-
-#     elif count == 1:
-#         # Roots are evenly spaced on the unit circle with a small random perturbation
-#         # degree, r = 6, 1
-#         roots = root_generator_circle([k / degree for k in range(0, degree)])
-#         roots = perturb_roots(roots) #default perturbation is set to 0.005
-
-#     elif count <= n//2:
-#         # Roots have a unfiormly random distribution on the unit circle
-#         # degree = np.random.randint(1, 25)
-#         roots = root_generator_circle(np.random.uniform(0, 1, degree))
-    
-#     else:
-#         # Roots have a unfiromly random distribution in the unit disk
-#         # degree = np.random.randint(1, 25)
-#         r = [1] * degree
-#         theta = np.random.uniform(0, 1, degree)
-#         root_positions = list(zip(r, theta))
-#         roots = root_generator_disk(root_positions)
-
-#     # print(degree)
-#     display_lemniscate(roots, count=(n+count))
-
-# print("Plots generated")
 
 def display_viewing_samples(samples, sample_name, xlim=(-2, 2), ylim=(-2, 2), res=1000, path="poly_lemniscate_project/Images/"):
     """

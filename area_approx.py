@@ -112,7 +112,7 @@ lib_amr.hybrid_amr_estimate.argtypes = [
     ctypes.c_int                      # max_depth
 ]
 
-def hybrid_amr_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), init_divs=9,
+def hybrid_amr_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), init_divs=8,
                      min_cell_size=1e-3, max_depth=5):
     """
     Estimate the area of the lemniscate using a hybrid adaptive mesh refinement technique with C++ implementation.
@@ -150,8 +150,8 @@ if __name__ == "__main__":
             for j, roots in enumerate(deg_samples):
                 # area = grid_estimate(roots, res=res)
                 # area = monte_carlo_estimate(roots, n_pts=int(n))
-                area = monte_carlo_estimate_cpp(roots, n_pts=int(n))
-                # area = hybrid_amr_cpp(roots, max_depth=11, min_cell_size=s)
+                # area = monte_carlo_estimate_cpp(roots, n_pts=int(n))
+                area = hybrid_amr_cpp(roots, max_depth=11, min_cell_size=s)
                 areas[i].append(area)
         t = time.time() - t
         print(f"Total time: {t:.4f}s || Average time per lemniscate : {t / 30:.4f}s")
