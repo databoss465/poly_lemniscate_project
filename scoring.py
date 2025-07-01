@@ -160,6 +160,39 @@ if __name__ == "__main__":
         df.to_csv(os.path.join(filepath, f"{filename}_{n}pts_cpp.csv"), index=True, header=False)
         print(f"Areas saved")
 
+def score (root_positions: list[float], **kwargs) -> float:
+    """
+    Calculate the score of the polynomial defined by its root positions on the unit circle.
+    Since the objective is minimize the area, the score is `4 - area`.
+
+    Keyword arguments:
+    - method: Method to use for area approximation ('monte_carlo' or 'hybrid_amr')
+    - n_pts: Number of points for Monte Carlo method (default: 10^6)
+    - init_divs: Initial divisions for hybrid AMR (default: 8)
+    - min_cell_size: Minimum cell size for hybrid AMR (default: 1e-5)
+    - max_depth: Maximum depth for hybrid AMR (default: 11)
+    """
+    assert all(0 <= pos < 1 for pos in root_positions), "Theta values must be in the range [0, 1)"
+
+    method = kwargs.get('method', 'hybrid_amr')
+    n_pts = kwargs.get('n_pts', 10**6)
+    init_divs = kwargs.get('init_divs', 8)
+    min_cell_size = kwargs.get('min_cell_size', 1e-5)
+    max_depth = kwargs.get('max_depth', 11)
+
+    roots = root_generator_circle(root_positions)
+
+    if method == 'monte_carlo':
+        area = monte_carlo_estimate_cpp(roots, n_pts=n_pts)
+    elif method == 'hybrid_amr':
+        area = hybrid_amr_cpp(roots, init_divs=init_divs, min_cell_size=min_cell_size, max_depth=max_depth)
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    # return area
+    return 4 - area
+
+
 # From initial testing, at the same number of points, Monte Carlo seems slower than grid estimation, but it is proably more accurate.
 # In theory, we know the uncertainty of the Monte Carlo estimate, and with a million points, it was found to be ~0.3% and takes about 0.06-0.07s
 # However in theory, the uncertainty with the grid estimate increases with the resolution, so I don't find it feasible.
