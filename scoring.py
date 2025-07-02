@@ -132,34 +132,6 @@ def hybrid_amr_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), init_divs=
     return area
 
 
-if __name__ == "__main__":
-    filepath = "poly_lemniscate_project/Samples"
-    filename = "samples_0628-0045"
-    samples = load_viewing_samples(os.path.join(filepath, f"{filename}.json"))
-    starting_degree = len(samples[0][0])  # Degree of the first sample
-
-
-    for n in [1e4, 6.25e4, 2.5e5, 1e6, 4e6, 1e7]:
-
-        areas = {}
-        degrees = range(starting_degree, starting_degree + 9, 2)
-
-        t = time.time()
-        for i, deg_samples in zip(degrees, samples):
-            areas[i] = []
-            for j, roots in enumerate(deg_samples):
-                # area = grid_estimate(roots, res=res)
-                # area = monte_carlo_estimate(roots, n_pts=int(n))
-                # area = monte_carlo_estimate_cpp(roots, n_pts=int(n))
-                area = hybrid_amr_cpp(roots, max_depth=11, min_cell_size=s)
-                areas[i].append(area)
-        t = time.time() - t
-        print(f"Total time: {t:.4f}s || Average time per lemniscate : {t / 30:.4f}s")
-
-        df = pd.DataFrame(areas).T
-        df.to_csv(os.path.join(filepath, f"{filename}_{n}pts_cpp.csv"), index=True, header=False)
-        print(f"Areas saved")
-
 def score (root_positions: list[float], **kwargs) -> float:
     """
     Calculate the score of the polynomial defined by its root positions on the unit circle.
@@ -192,6 +164,55 @@ def score (root_positions: list[float], **kwargs) -> float:
     # return area
     return 4 - area
 
+def score_file (path: str, savepath: str, precision: int = 16, **kwargs) -> float:
+    """
+    Decodes a file coming from makemore, and computes the scores.
+    Saves a sorted csv file with two columns 'root_positions' and 'score'.
+    """
+    root_positions = file_decoder(path, precision) # List of root positions
+    scores = [score(pos, **kwargs) for pos in root_positions]
+    df = pd.DataFrame({'root_positions': root_positions, 'score': scores})
+    df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
+    df.to_csv(savepath, index=False)
+
+    print(f"Root positions and scores saved to {savepath}")
+
+    return
+    
+
+
+if __name__ == "__main__":
+    # filepath = "poly_lemniscate_project/Samples"
+    # filename = "samples_0628-0045"
+    # samples = load_viewing_samples(os.path.join(filepath, f"{filename}.json"))
+    # starting_degree = len(samples[0][0])  # Degree of the first sample
+
+
+    # for n in [1e4, 6.25e4, 2.5e5, 1e6, 4e6, 1e7]:
+
+    #     areas = {}
+    #     degrees = range(starting_degree, starting_degree + 9, 2)
+
+    #     t = time.time()
+    #     for i, deg_samples in zip(degrees, samples):
+    #         areas[i] = []
+    #         for j, roots in enumerate(deg_samples):
+    #             # area = grid_estimate(roots, res=res)
+    #             # area = monte_carlo_estimate(roots, n_pts=int(n))
+    #             # area = monte_carlo_estimate_cpp(roots, n_pts=int(n))
+    #             area = hybrid_amr_cpp(roots, max_depth=11, min_cell_size=s)
+    #             areas[i].append(area)
+    #     t = time.time() - t
+    #     print(f"Total time: {t:.4f}s || Average time per lemniscate : {t / 30:.4f}s")
+
+    #     df = pd.DataFrame(areas).T
+    #     df.to_csv(os.path.join(filepath, f"{filename}_{n}pts_cpp.csv"), index=True, header=False)
+    #     print(f"Areas saved")
+    path = "poly_lemniscate_project/Data/population100_deg20_enc.txt"
+    savepath = "poly_lemniscate_project/Samples/population100_deg20_dec.csv"
+    precision = 16
+
+    score_file(path, savepath, precision=precision)
 
 # From initial testing, at the same number of points, Monte Carlo seems slower than grid estimation, but it is proably more accurate.
 # In theory, we know the uncertainty of the Monte Carlo estimate, and with a million points, it was found to be ~0.3% and takes about 0.06-0.07s

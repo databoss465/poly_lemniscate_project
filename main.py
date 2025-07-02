@@ -134,7 +134,7 @@ def generate_population (pop_size:int, deg:int, max_steps:int=100, reps:int=100,
 if __name__ == "__main__":
 
     deg = 15
-    total_pop = 1000
+    total_pop = 2000
     max_steps = 100
     reps = 100
     tolerance = 10

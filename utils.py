@@ -1,8 +1,10 @@
 import os
 import json
 import time
+import ast
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def root_generator_disk (root_positions: list[tuple[float, float]]):
     """
@@ -184,12 +186,82 @@ def canonical (root_positions: list[float]):
             root_positions[i] += 1
 
     return sorted(root_positions)
+
+def bitstr_encoder (root_positions: list[float], precision: int) -> str:
+    """
+    Encode the root positions as comma-separated bitstrings
+    """
+    assert all(0 <= pos < 1 for pos in root_positions), "Theta values must be in the range [0, 1)"
+    encoded = format(int(root_positions[0] * (1 << precision)), 'b')
+    for pos in root_positions[1:]:
+        bitstr = format(int(pos * (1 << precision)), 'b')
+        encoded += ',' + bitstr
+
+    return encoded
+
+def bitstr_decoder (bitstr: str, precision: int) -> list[float]:
+    """
+    Decode a comma-separated bitstr into root positions.
+    Input bitstrings are minimal, not padded with leading zeros.
+    """
+    assert isinstance(bitstr, str), "Bitstr must be a string"
+    # assert all(char in '0,1' for char in bitstr), f"{bitstr} must contain only '0's, '1's, and ','"
+
+    bitstrings = bitstr.split(',')
+    return [int(b, 2) / (1 << precision) for b in bitstrings]
+
+def file_encoder (path: str, savepath:str, precision: int):
+    """
+    Given the `path` to a csv file with two columns, root positions and scores,
+    encode each root position to a bitstring in one line and save as a txt file.
+
+    This converts output of `generate_population` function to the training dat for
+    makemore.
+    """
+    assert os.path.exists(path), f"File {path} does not exist."
+    assert path.endswith('.csv'), "Input file must be a CSV file."
     
+    df = pd.read_csv(path, header=0)
+    assert df.shape[1] == 2, "Input CSV file must have exactly two columns: root positions and scores."
+    df.head()
+
+    root_positions = df["root_positions"].apply(ast.literal_eval)  # Convert string representation of list to actual list
+    bitstrings = root_positions.apply(lambda x: bitstr_encoder(x, precision))
+    lines = bitstrings.tolist()
+
+    with open(savepath, 'w') as f:
+        f.write('\n'.join(lines))
+
+    print(f"Encoded root positions saved to {savepath}")
+    return
+
+def file_decoder (path: str, precision: int):
+    """
+    Decode a file with comma-separated bitstrings into a csv with root positions.
+    For computing scores, check scoring.py
+    """
+    assert os.path.exists(path), f"File {path} does not exist."
+    assert path.endswith('.txt'), "Input file must be a TXT file."
+
+    with open(path, 'r') as f:
+        lines = [line.strip() for line in f.readlines()]  # Strip whitespace and newlines
+
+    root_pos = [bitstr_decoder(line, precision) for line in lines]
+    
+    return root_pos    
+        
 
 
 if __name__ == "__main__":
-    print("Utility functions")
-
+    # print("Utility functions")
+    # print(bitstr_decoder(bitstr_encoder([0, 0.5, 0.75], 16), 16))
+    # Example usage
+    path = "poly_lemniscate_project/Samples/population2000_deg15.csv"
+    savepath = "poly_lemniscate_project/Data/population2000_deg15_enc.txt"
+    precision = 16
+    file_encoder(path, savepath, precision)
+    dec = file_decoder(savepath, precision)
+    print(f"Decoded root positions: {dec[:5]}")  # Print first
 
 
 

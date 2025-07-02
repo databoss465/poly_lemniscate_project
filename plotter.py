@@ -93,20 +93,32 @@ def display_viewing_samples(samples, sample_name, xlim=(-2, 2), ylim=(-2, 2), re
 if __name__ == "__main__":
     # samples, sample_name = generate_viewing_samples(15, save=True)
     # display_viewing_samples(samples, sample_name)
-    deg = 25
-    root_pos = [k / deg for k in range(0, deg)]
-    print(f"Original: {root_pos}" + "\n")
-    l = list(range(2,len(root_pos)-1))
-    j = np.random.choice(l, deg//2)
-    for h in j:
-        root_pos[h] += np.random.uniform(-0.05, 0.05)
-    print(f"Perturbed: {root_pos}" "\n")
+    deg, precision = 15, 16
+    root_pos = np.random.uniform(0, 1, deg).tolist()
+    root_pos = canonical(root_pos)
     roots = root_generator_circle(root_pos)
-    display_lemniscate(roots, count=12)
-    canonical_pos = canonical (root_pos)
-    print(f"Canonical: {canonical_pos}")
-    roots = root_generator_circle(canonical_pos)
-    display_lemniscate(roots, count=13)
+    bitstring = bitstring_encoder(root_pos, precision)
+    print(f"Root positions: {root_pos}")
+    print(f"Bitstring: {bitstring}")
+
+    # i = np.random.randint(0, len(bitstring))
+    # print(f"Index to modify: {i}")  
+    # if bitstring[i] == '0':
+    #     modified_bitstring = bitstring[:i] + '1' + bitstring[i+1:]
+    # elif bitstring[i] == '1':
+    #     modified_bitstring = bitstring[:i] + '0' + bitstring[i+1:]
+    # else:
+    #     modified_bitstring = bitstring[:i+1] + ('1' if bitstring[i] == '0' else '0') + bitstring[i+1:]
+    # enc_dec_pos = bitstring_decoder(modified_bitstring, precision)
+
+    enc_dec_pos = bitstring_decoder(bitstring, precision)
+    enc_dec_pos = canonical(enc_dec_pos)
+    enc_dec_roots = root_generator_circle(enc_dec_pos)
+    # print(f"Modified bitstring: {modified_bitstring}")
+    print(f"Decoded positions: {enc_dec_pos}")
+
+    display_lemniscate(roots, count=84)
+    display_lemniscate(enc_dec_roots, count=85)
 
 
 
