@@ -28,17 +28,20 @@ from plotter import display_lemniscate
 # 5. Encode them as bitstrings and save to txt file
 # 6. Repeat steps 1-5 until convergence or desired number of iterations
 
-def local_search (root_positions: list[float], max_steps:int=100) -> list[complex]:
+def local_search (root_positions: list[float], max_steps:int=100, score_kwargs:dict={}) -> list[complex]:
     """
     A simple algorithm to generate a new set of root positions so that
-    the score is at least as good as the input root positions.
+    the score is at least as good as the input root positions. For kwargs check scoring.py.
+
+    Returns the new root config, the new score and a boolean indicating improvement.
     """
     assert all(0 <= pos < 1 for pos in root_positions), "Theta values must be in the range [0, 1)"      # Initial score
 
     deg = len(root_positions)
-    initial_score = score(root_positions)
+    initial_score = score(root_positions, **score_kwargs)  # Initial score
     # print(f"Initial score: {initial_score}")
     new_positions = root_positions.copy()
+    new_score = initial_score
     improved = False
     count = 0
 
@@ -49,21 +52,22 @@ def local_search (root_positions: list[float], max_steps:int=100) -> list[comple
 
         cddt_positions = new_positions.copy()
         cddt_positions[i] = (cddt_positions[i] + delta) % 1
-        cddt_score = score(cddt_positions)
+        cddt_score = score(cddt_positions, **score_kwargs)  
 
 
         if cddt_score >= initial_score:
             new_positions = cddt_positions
-            # print(f"Intial score: {initial_score}, New score: {cddt_score}, Step: {count}, Changed position: {i}, Delta: {delta:.4f}")
+            new_score = cddt_score
+            # print(f"Intial score: {initial_score}, New score: {new_score}, Step: {count}, Changed position: {i}, Delta: {delta:.4f}")
             improved = True
 
         elif count > max_steps:
             # print(f"Failed to improve after {count} iterations. Returning original positions.")
             break
               
-    return new_positions, cddt_score, improved
+    return new_positions, new_score, improved
 
-def rep_local_search (root_positions: list[float], max_steps:int=100, reps:int=100, display_status:int=5, tolerance:int=10) -> list[complex]:
+def rep_local_search (root_positions: list[float], max_steps:int=100, reps:int=100, display_status:int=5, tolerance:int=10, score_kwargs:dict={}) -> list[complex]:
     """
     Run local search for a number of repetitions.
     """
@@ -72,9 +76,9 @@ def rep_local_search (root_positions: list[float], max_steps:int=100, reps:int=1
     new_positions = root_positions.copy()
     failed_attempts = 0
     for i in range(reps):
+        new_positions, new_score, improved = local_search(new_positions, max_steps, score_kwargs)
         # if i % display_status == 0:
-        #     print(f"Iteration {i+1}/{reps}")
-        new_positions, new_score, improved = local_search(new_positions, max_steps=max_steps)
+        #     print(f"Iteration {i+1}/{reps}: New score: {new_score:.4f}")
         
         if not improved:
             failed_attempts += 1
@@ -87,7 +91,7 @@ def rep_local_search (root_positions: list[float], max_steps:int=100, reps:int=1
     return canonical(new_positions), new_score
 
 # Worker function for parallel processing
-def populator (bs:int, deg: int, max_steps:int=100, reps:int=100, tolerance:int=10)  -> list[tuple[list[float], float]]:
+def populator (bs:int, deg: int, max_steps:int=100, reps:int=100, tolerance:int=10, score_kwargs:dict={})  -> list[tuple[list[float], float]]:
     """
     Worker function for parallel processing.
     Generates a random set of root positions and runs local search on them.
@@ -96,12 +100,14 @@ def populator (bs:int, deg: int, max_steps:int=100, reps:int=100, tolerance:int=
     results = []
     for _ in tqdm(range(bs), desc="Worker progress", position=0, leave=False):
         root_positions = canonical(np.random.uniform(0, 1, deg).tolist())
-        new_positions, new_score = rep_local_search(root_positions, max_steps=max_steps, reps=reps, tolerance=tolerance)
+        new_positions, new_score = rep_local_search(root_positions, max_steps=max_steps, reps=reps, tolerance=tolerance, score_kwargs=score_kwargs)
         results.append((new_positions, new_score))
 
     return results
 
-def generate_population (pop_size:int, deg:int, max_steps:int=100, reps:int=100, tolerance:int=10, num_workers: int = 12) -> pd.DataFrame:
+
+
+def generate_population (pop_size:int, deg:int, max_steps:int=100, reps:int=100, tolerance:int=10, score_kwargs:dict={}, num_workers: int = 12) -> pd.DataFrame:
     """
     Generate a sorted population of canonical root positions using parallel processing.
 
@@ -115,7 +121,7 @@ def generate_population (pop_size:int, deg:int, max_steps:int=100, reps:int=100,
     """
 
     bs = pop_size // num_workers
-    args = [(bs, deg, max_steps, reps, tolerance) for _ in range(num_workers)]
+    args = [(bs, deg, max_steps, reps, tolerance, score_kwargs) for _ in range(num_workers)]
 
     print(f"Generating population of {pop_size} root positions with degree {deg} using {num_workers} workers...")
     with Pool(processes=num_workers) as pool:
@@ -133,25 +139,27 @@ def generate_population (pop_size:int, deg:int, max_steps:int=100, reps:int=100,
 
 if __name__ == "__main__":
 
-    deg = 15
-    total_pop = 2000
-    max_steps = 100
+    deg = 20
+    total_pop = 320
+    max_steps = 10
     reps = 100
-    tolerance = 10
+    tolerance = 5
+    score_kwargs = {'method':'monte_carlo', 'n_pts':10**6}
+    # score_kwargs = {'method': method, 'n_pts': n_pts}
 
     filepath = "poly_lemniscate_project/Samples"
-    filename = f"population{total_pop}_deg{deg}.csv"
+    filename = f"population{total_pop}_deg{deg}_mc.csv"
     plotpath = "poly_lemniscate_project/Images"
-    plotname = f"population{total_pop}_deg{deg}.png"
+    plotname = f"population{total_pop}_deg{deg}_mc.png"
     
     t = time.time()
-    population_df = generate_population(total_pop, deg, max_steps=max_steps, reps=reps, tolerance=tolerance)
+    population_df = generate_population(total_pop, deg, max_steps=max_steps, reps=reps, tolerance=tolerance, score_kwargs=score_kwargs, num_workers=8)
     population_df.to_csv(os.path.join(filepath, filename), index=False)
     t = time.time() - t
     print(f"Population generated and saved to {os.path.join(filepath, filename)} in {t:.2f}s.")
 
     plt.hist(population_df['score'], bins=20, color='cyan', alpha=0.7, edgecolor='black')
-    plt.title(f"Score Distribution for Degree {deg} Population")
+    plt.title(f"Score Distribution for Degree {deg} Population, scored with Monte Carlo")
     plt.xlabel("Score")
     plt.ylabel("Frequency")
     plt.grid(True)
@@ -162,5 +170,5 @@ if __name__ == "__main__":
 
 
 
-    
+
 
