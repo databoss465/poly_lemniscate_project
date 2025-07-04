@@ -208,7 +208,16 @@ def bitstr_decoder (bitstr: str, precision: int) -> list[float]:
     # assert all(char in '0,1' for char in bitstr), f"{bitstr} must contain only '0's, '1's, and ','"
 
     bitstrings = bitstr.split(',')
-    return [int(b, 2) / (1 << precision) for b in bitstrings]
+    roots = []
+    # return [int(b, 2) / (1 << precision) for b in bitstrings]
+    for b in bitstrings:
+        # print(b)
+        root = int(b, 2) / (1 << precision)
+        roots.append(root)
+
+    return roots
+
+
 
 def file_encoder (path: str, savepath:str, precision: int):
     """

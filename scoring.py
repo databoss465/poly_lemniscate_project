@@ -170,8 +170,19 @@ def score_file (path: str, savepath: str, precision: int = 16, **kwargs) -> floa
     Saves a sorted csv file with two columns 'root_positions' and 'score'.
     """
     root_positions = file_decoder(path, precision) # List of root positions
-    scores = [score(pos, **kwargs) for pos in root_positions]
+    scores = []
+    for pos in root_positions:
+        try:
+            scores.append(score(pos, **kwargs))
+        except AssertionError:
+            print(f"Invalid root positions: {pos}. Skipping...")
+            scores.append(float('nan'))
     df = pd.DataFrame({'root_positions': root_positions, 'score': scores})
+    before_drop = len(df)
+    df = df.dropna().reset_index(drop=True)
+    after_drop = len(df)
+    dropped_count = before_drop - after_drop
+    print(f"Dropped {dropped_count} rows with invalid root positions.")
     df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
     df.to_csv(savepath, index=False)
 
@@ -208,7 +219,7 @@ if __name__ == "__main__":
     #     df = pd.DataFrame(areas).T
     #     df.to_csv(os.path.join(filepath, f"{filename}_{n}pts_cpp.csv"), index=True, header=False)
     #     print(f"Areas saved")
-    path = "poly_lemniscate_project/Data/population100_deg20_enc.txt"
+    path = "poly_lemniscate_project/Data/population2000_deg15_samples.txt"
     savepath = "poly_lemniscate_project/Samples/population100_deg20_dec.csv"
     precision = 16
 
