@@ -1,6 +1,7 @@
 import os
 import json
 import ctypes
+import time
 import numpy as np
 import pandas as pd
 from utils import *
@@ -99,7 +100,7 @@ def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), 
 
 # C++ Hybrid Adaptive Mesh Refinement implementation
 
-lib_amr = ctypes.CDLL("poly_lemniscate_project/libamr.so")
+lib_amr = ctypes.CDLL("libamr.so")
 lib_amr.hybrid_amr_estimate.restype = ctypes.c_double
 lib_amr.hybrid_amr_estimate.argtypes = [
     ctypes.POINTER(ctypes.c_double),  # pointer to roots_re
@@ -188,44 +189,38 @@ def score_file (path: str, savepath: str, precision: int = 16, **kwargs) -> floa
 
     print(f"Root positions and scores saved to {savepath}")
 
-    return
+def standard_benchmark (func):
+    path = "Samples/standard_benchmark.json"
+    sample_set = json.load(open(path, 'r'))
+    benchamrk_report = []
+    for samples in sample_set:
+        n, deg = len(samples), len(samples[0])
+        runtimes = []
+        for sample in smaples:
+            t = time.time()
+            score(sample, **kwargs)
+            runtimes.append(time.time() - t)
+        mean_runtime = np.mean(runtimes)
+        median_runtime = np.median(runtimes)
+        stddev_runtime = np.std(runtimes)
+        max_runtime, min_runtime = np.max(runtimes), np.min(runtimes)
+        benchamrk_report.append({
+            'n_samples': n,
+            'degree': deg,
+            'mean' : mean_runtime,
+            'median': median_runtime,
+            'stddev': stddev_runtime,
+            'max': max_runtime,
+            'min': min_runtime
+        })
+
+    df = pd.DataFrame(benchamrk_report)
+
+    return df
     
 
 
 if __name__ == "__main__":
-    # filepath = "poly_lemniscate_project/Samples"
-    # filename = "samples_0628-0045"
-    # samples = load_viewing_samples(os.path.join(filepath, f"{filename}.json"))
-    # starting_degree = len(samples[0][0])  # Degree of the first sample
 
-
-    # for n in [1e4, 6.25e4, 2.5e5, 1e6, 4e6, 1e7]:
-
-    #     areas = {}
-    #     degrees = range(starting_degree, starting_degree + 9, 2)
-
-    #     t = time.time()
-    #     for i, deg_samples in zip(degrees, samples):
-    #         areas[i] = []
-    #         for j, roots in enumerate(deg_samples):
-    #             # area = grid_estimate(roots, res=res)
-    #             # area = monte_carlo_estimate(roots, n_pts=int(n))
-    #             # area = monte_carlo_estimate_cpp(roots, n_pts=int(n))
-    #             area = hybrid_amr_cpp(roots, max_depth=11, min_cell_size=s)
-    #             areas[i].append(area)
-    #     t = time.time() - t
-    #     print(f"Total time: {t:.4f}s || Average time per lemniscate : {t / 30:.4f}s")
-
-    #     df = pd.DataFrame(areas).T
-    #     df.to_csv(os.path.join(filepath, f"{filename}_{n}pts_cpp.csv"), index=True, header=False)
-    #     print(f"Areas saved")
-    path = "poly_lemniscate_project/Data/population2000_deg15_samples.txt"
-    savepath = "poly_lemniscate_project/Samples/population100_deg20_dec.csv"
-    precision = 16
-
-    score_file(path, savepath, precision=precision)
-
-# From initial testing, at the same number of points, Monte Carlo seems slower than grid estimation, but it is proably more accurate.
-# In theory, we know the uncertainty of the Monte Carlo estimate, and with a million points, it was found to be ~0.3% and takes about 0.06-0.07s
-# However in theory, the uncertainty with the grid estimate increases with the resolution, so I don't find it feasible.
-# Especially assuming that our transformer will be very sensitive to the area of the lemniscates
+   df = standard_benchmark(score)
+   print(df)
