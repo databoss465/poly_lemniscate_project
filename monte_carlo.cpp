@@ -4,11 +4,13 @@
 #include <cmath>
 #include <omp.h>
 
+// g++ -O3 -fPIC -fopenmp -shared monte_carlo.cpp -o libmontecarlo.so
+
 extern "C" double monte_carlo_estimate (
     const double* roots_re, const double* roots_im, int degree,
-    double x_min, double x_max, double y_min, double y_max, int n_pts) {
+    double x_min, double x_max, double y_min, double y_max, int n_pts, int n_threads) {
 
-        omp_set_num_threads(2);
+        omp_set_num_threads(n_threads);
 
         // Array of roots as complex numbers
         std::vector<std::complex<double>> roots(degree);

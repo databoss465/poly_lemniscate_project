@@ -1,6 +1,9 @@
 #include <cmath>
 #include <complex>
 #include <vector>
+#include <omp.h>
+
+// g++ -O3 -fPIC -fopenmp -shared amr.cpp -o libamr.so
 
 extern "C" double hybrid_amr_estimate(
     const double* roots_re, const double* roots_im, int degree,

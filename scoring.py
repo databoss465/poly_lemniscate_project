@@ -5,6 +5,7 @@ import time
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from multiprocessing import Pool
 from utils import *
 
 
@@ -32,7 +33,7 @@ def grid_estimate (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), res=1000):
     # Approximate area of the lemniscate
     return inside_points * pixel_area
 
-def monte_carlo_estimate (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pts=10**6):
+def monte_carlo_estimate_py (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pts=10**6):
     """
     Estimate the area of the lemniscate using Monte Carlo method.
 
@@ -53,12 +54,54 @@ def monte_carlo_estimate (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pt
     # Count points inside the lemniscate
     inside_points = np.sum(mod_P < 1.0)  # Assuming bound is 1.0
     total_area = (xlim[1] - xlim[0]) * (ylim[1] - ylim[0])
-    
-    # Approximate area of the lemniscate
     area = total_area * (inside_points / n_pts)
-    stdev = total_area * np.sqrt((inside_points / n_pts) * (1 - inside_points / n_pts) / n_pts)
 
-    return area, stdev
+    return area
+
+def recursive_refine (p, min_cell_size:float, depth:int, max_depth:int, xlim=(-2, 2), ylim=(-2, 2)):
+
+    test_pts = [(xlim[0], ylim[0]), (xlim[1], ylim[0]),
+               (xlim[0], ylim[1]), (xlim[1], ylim[1]),
+                ((xlim[0] + xlim[1]) / 2, (ylim[0] + ylim[1]) / 2)]
+    test_pts = [complex(*pt) for pt in test_pts]
+    in_count = sum(1 for pt in test_pts if np.abs(p(pt)) < 1.0)
+    area = (xlim[1] - xlim[0]) * (ylim[1] - ylim[0])
+
+    if in_count == 5:
+        return area
+    if in_count == 0 and depth > 0:
+        return 0
+    if depth >= max_depth or cell_size < min_cell_size:
+        return area * (in_count / 5)
+
+    x_mid, y_mid = (xlim[0] + xlim[1]) / 2, (ylim[0] + ylim[1]) / 2
+
+    area1 = recursive_refine(roots, min_cell_size, depth + 1, max_depth, (xlim[0], x_mid), (ylim[0], y_mid))
+    area2 = recursive_refine(roots, min_cell_size, depth + 1, max_depth, (xlim[0], x_mid), (y_mid, ylim[1]))
+    area3 = recursive_refine(roots, min_cell_size, depth + 1, max_depth, (x_mid, xlim[1]), (ylim[0], y_mid))
+    area4 = recursive_refine(roots, min_cell_size, depth + 1, max_depth, (x_mid, xlim[1]), (y_mid, ylim[1]))
+
+    return area1 + area2 + area3 + area4
+    
+def hybrid_amr_py (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), init_divs=8, min_cell_size=1e-5, max_depth=11):
+    """
+    Hybrid AMR in python
+    """
+    p = mk_pol(roots)
+    total_area = 0
+    dx, dy = (xlim[1] - xlim[0]) / init_divs, (ylim[1] - ylim[0]) / init_divs
+    for i in range(init_divs):
+        for j in range(init_divs):
+            x_min = xlim[0] + i * dx
+            x_max = xlim[0] + (i + 1) * dx
+            y_min = ylim[0] + j * dy
+            y_max = ylim[0] + (j + 1) * dy
+            
+            total_area += recursive_refine(p, min_cell_size, 0, max_depth,
+                                    (x_min, x_max), (y_min, y_max))
+
+    return area
+               
 
 # C++ Monte Carlo implementation
 lib = ctypes.CDLL("/home/databoss465/poly_lemniscate_project/libmontecarlo.so")
@@ -69,10 +112,11 @@ lib.monte_carlo_estimate.argtypes = [
     ctypes.c_int,                      # degree
     ctypes.c_double, ctypes.c_double,  # xmin, xmax
     ctypes.c_double, ctypes.c_double,  # ymin, ymax
-    ctypes.c_int                       # n_pts
+    ctypes.c_int,                      # n_pts
+    ctypes.c_int                       # n_threads
 ]
 
-def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pts=10**6):
+def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pts=10**6, n_threads=2):
     """
     Estimate the area of the lemniscate using Monte Carlo method with C++ implementation.
 
@@ -94,7 +138,7 @@ def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), 
         degree,
         xlim[0], xlim[1],
         ylim[0], ylim[1],
-        n_pts
+        n_pts, n_threads
     )
     
     return area
@@ -153,13 +197,21 @@ def score (root_positions: list[float], **kwargs) -> float:
     init_divs = kwargs.get('init_divs', 8)
     min_cell_size = kwargs.get('min_cell_size', 1e-5)
     max_depth = kwargs.get('max_depth', 11)
+    n_threads = kwargs.get('n_threads', 2)
 
     roots = root_generator_circle(root_positions)
 
+    # print(method)
+    # print(method == "monte_carlo_py")
+
     if method == 'monte_carlo':
-        area = monte_carlo_estimate_cpp(roots, n_pts=n_pts)
+        area = monte_carlo_estimate_cpp(roots, n_pts=n_pts, n_threads=n_threads)
     elif method == 'hybrid_amr':
         area = hybrid_amr_cpp(roots, init_divs=init_divs, min_cell_size=min_cell_size, max_depth=max_depth)
+    elif method == 'monte_carlo_py':
+        area = monte_carlo_estimate_py(roots, n_pts=n_pts)
+    elif method == 'hybrid_amr_py':
+        area = hybrid_amr_py(roots, init_divs=init_divs, min_cell_size=min_cell_size, max_depth=max_depth)
     else:
         raise ValueError(f"Unknown method: {method}")
 
@@ -195,14 +247,35 @@ def benchmark (type:str = 'standard', **kwargs):
     path = f"Samples/{type}_benchmark.json"
     sample_set = json.load(open(path, 'r'))
     n_deg = len(sample_set)
-    # print(sample_set[0][0])
-    benchmark_report = []
+
+    method = kwargs.get('method', 'default')
+    # if method == 'monte_carlo':
+    #     n_pts = kwargs.get('n_pts', 10**6)
+    #     deets = f"{method}_n{n_pts}"
+    # elif method == 'hybrid_amr':
+    #     init_divs = kwargs.get('init_divs', 8)
+    #     min_cell_size = kwargs.get('min_cell_size', 1e-5)
+    #     max_depth = kwargs.get('max_depth', 11)
+    #     deets = f"{method}_i{init_divs}_m{min_cell_size}_d{max_depth}"
+    # elif method == 'monte_carlo_py':
+    #     n_pts = kwargs.get('n_pts', 10**6)
+    #     deets = f"{method}_n{n_pts}"
+    # elif method == 'hybrid_amr_py':
+    #     init_divs = kwargs.get('init_divs', 8)
+    #     min_cell_size = kwargs.get('min_cell_size', 1e-5)
+    #     max_depth = kwargs.get('max_depth', 11)
+    #     deets = f"{method}_i{init_divs}_m{min_cell_size}_d{max_depth}"
+    # else:
+    #     raise ValueError(f"Unknown method: {method}")
+
+    deets = f"{method}_" + "_".join(f"{k[0]}{v}" for k, v in kwargs.items() if k != 'method')
+
+    rows = []
     normalized_avg_runtime = 0.0
     for samples in sample_set:
         n, deg = len(samples), len(samples[0])
-        k = 10
+        k = n
         print(f"Scoring {k} polynomials of degree {deg}...")
-        runtimes = []
         i = 0
         for sample in samples:
             i += 1
@@ -210,31 +283,32 @@ def benchmark (type:str = 'standard', **kwargs):
                 break
             t = time.time()
             score(sample, **kwargs)
-            runtimes.append(time.time() - t)
-        mean_runtime = np.mean(runtimes)
-        normalized_avg_runtime += sum(runtimes) / deg
-        median_runtime = np.median(runtimes)
-        stddev_runtime = np.std(runtimes)
-        max_runtime, min_runtime = np.max(runtimes), np.min(runtimes)
-        benchmark_report.append({
-            # 'n_samples': n,
-            'degree': deg,
-            'mean' : mean_runtime,
-            'median': median_runtime,
-            'stddev': stddev_runtime,
-            'max': max_runtime,
-            'min': min_runtime
-        })
-        print(f"Mean runtime: {mean_runtime:.6f}s")
-    normalized_avg_runtime /= n_deg * n     #Breaks if n is different for each degree
-    print(f"Normalized average runtime: {normalized_avg_runtime:.6f}s per degree")
+            t = time.time() - t
+            normalized_avg_runtime += t / deg
+            rows.append({
+                'degree': deg,
+                'runtime' : t,
+                'details': deets
+                })
 
-    df = pd.DataFrame(benchmark_report).set_index('degree')
-    return df
+    normalized_avg_runtime /= n_deg * k
+    print(f"Normalized average runtime: {normalized_avg_runtime:.6f} seconds per polynomial per degree")
+    df = pd.DataFrame(rows)
+    return df, normalized_avg_runtime
     
 
 
 if __name__ == "__main__":
 
-   df = benchmark('scaling',method='monte_carlo', n_pts=10**6)
-   print(df)
+   bm_type = 'scaling'  # or 'scaling'
+   df, navrt = benchmark(bm_type, method='monte_carlo_py', n_pts=10**6, n_threads = 8)
+#    print(df.head(25))
+   sns.boxplot(df, x='degree', y='runtime', hue='details')
+#    plt.suptitle('Standard Benchmarking', fontsize=16)
+   plt.suptitle('Scale Benchmarking', fontsize=16)
+   plt.title(f'Normalized Avg Runtime: {navrt*1000:.6f}ms', fontsize=12)
+   plt.xlabel('deg')
+   plt.ylabel('runtime (s)')
+#    plt.savefig(f'Images/standard_benchmarking_mcpy.png', dpi=300)
+   plt.savefig(f'Images/scale_benchmarking_mcpy.png', dpi=300)
+   plt.close()
