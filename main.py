@@ -147,9 +147,9 @@ if __name__ == "__main__":
     score_kwargs = {'method':'monte_carlo', 'n_pts':10**6}
     # score_kwargs = {'method': method, 'n_pts': n_pts}
 
-    filepath = "poly_lemniscate_project/Samples"
+    filepath = "Samples"
     filename = f"population{total_pop}_deg{deg}_dec.csv"
-    plotpath = "poly_lemniscate_project/Images"
+    plotpath = "Images"
     plotname = f"population{total_pop}_deg{deg}_dec.png"
 
     population_df = pd.read_csv(os.path.join(filepath, filename))

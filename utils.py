@@ -104,8 +104,24 @@ def generate_viewing_samples (deg:int, save=False):
 
     return (samples, sample_name) if save else samples
 
+def generate_benchmark_samples (deg:int, n_samples:int=100, seed=465):
+    """
+    Generate a set of benchmark samples for a given degree.
+    
+    Parameters:
+    - deg: Degree of the polynomial
+    - n_samples: Number of samples to generate
+    - seed: Random seed
+    """
+    np.random.seed(seed)
+    root_configs = set()
+    while len(root_configs) < n_samples:
+        root_pos = tuple(canonical(np.random.uniform(0, 1, deg)))   # Convert to tuple for hashability
+        root_configs.add(root_pos)
 
-def save_viewing_samples (samples, path="poly_lemniscate_project/Samples/"):
+    return [list(root_pos) for root_pos in root_configs]
+
+def save_viewing_samples (samples, path="Samples/"):
     """
     Save the generated viewing samples to a JSON file,using tuples to represent complex numbers as (real, imag) pairs.
     
@@ -264,13 +280,25 @@ def file_decoder (path: str, precision: int):
 if __name__ == "__main__":
     # print("Utility functions")
     # print(bitstr_decoder(bitstr_encoder([0, 0.5, 0.75], 16), 16))
-    # Example usage
-    path = "poly_lemniscate_project/Samples/population2000_deg15.csv"
-    savepath = "poly_lemniscate_project/Data/population2000_deg15_enc.txt"
-    precision = 16
-    file_encoder(path, savepath, precision)
-    dec = file_decoder(savepath, precision)
-    print(f"Decoded root positions: {dec[:5]}")  # Print first
+
+    # path = "Samples/population2000_deg15.csv"
+    # savepath = "Data/population2000_deg15_enc.txt"
+    # precision = 16
+    # file_encoder(path, savepath, precision)
+    # dec = file_decoder(savepath, precision)
+    # print(f"Decoded root positions: {dec[:5]}")  # Print first
+
+    degs = [10, 50, 100, 500, 1000]
+    # degs = [10, 20, 40, 80, 100, 140, 160, 200]
+    benchmark = []
+    for deg in degs:
+        benchmark += generate_benchmark_samples(deg)
+
+    file = "Samples/scaling_benchmark.json"
+    # file = "Samples/standard_benchmark.json"
+    with open(file, 'w') as f:
+        json.dump(benchmark, f)
+    
 
 
 

@@ -5,7 +5,7 @@ from utils import *
 
 def display_lemniscate (roots: list[complex], bound: float = 1.0, 
                         xlim: tuple = (-2, 2), ylim: tuple = (-2, 2), res: int = 1000,
-                        path = "poly_lemniscate_project/Images/", count = 0):
+                        path = "Images", count = 0):
     """
     Display the polynomial lemniscate defined by its roots.
 
@@ -14,7 +14,7 @@ def display_lemniscate (roots: list[complex], bound: float = 1.0,
     - bound: The boundary for the lemniscate, default set to 1.0
     - xlim, ylim: The limits for the x and y axes, default set to (-2, 2).
     - res: Resolution of the grid for plotting, default set to 1000.
-    - path: Path to save the plot images, default set to "poly_lemniscate_project/Images/"
+    - path: Path to save the plot images, default set to "Images"
     - count: Counter for naming the saved plot images, default set to 0
     """
 
@@ -47,7 +47,7 @@ def display_lemniscate (roots: list[complex], bound: float = 1.0,
     plt.close()
 
 
-def display_viewing_samples(samples, sample_name, xlim=(-2, 2), ylim=(-2, 2), res=1000, path="poly_lemniscate_project/Images/"):
+def display_viewing_samples(samples, sample_name, xlim=(-2, 2), ylim=(-2, 2), res=1000, path="Images"):
     """
     Display the 5x6 viewing samples of lemniscates.
 
