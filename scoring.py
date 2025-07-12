@@ -4,6 +4,7 @@ import ctypes
 import time
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from utils import *
 
 
@@ -60,7 +61,7 @@ def monte_carlo_estimate (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pt
     return area, stdev
 
 # C++ Monte Carlo implementation
-lib = ctypes.CDLL("poly_lemniscate_project/libmontecarlo.so")
+lib = ctypes.CDLL("/home/databoss465/poly_lemniscate_project/libmontecarlo.so")
 lib.monte_carlo_estimate.restype = ctypes.c_double
 lib.monte_carlo_estimate.argtypes = [
     ctypes.POINTER (ctypes.c_double),  # pointer to roots_re 
@@ -100,7 +101,7 @@ def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), 
 
 # C++ Hybrid Adaptive Mesh Refinement implementation
 
-lib_amr = ctypes.CDLL("libamr.so")
+lib_amr = ctypes.CDLL("/home/databoss465/poly_lemniscate_project/libamr.so")
 lib_amr.hybrid_amr_estimate.restype = ctypes.c_double
 lib_amr.hybrid_amr_estimate.argtypes = [
     ctypes.POINTER(ctypes.c_double),  # pointer to roots_re
@@ -189,23 +190,34 @@ def score_file (path: str, savepath: str, precision: int = 16, **kwargs) -> floa
 
     print(f"Root positions and scores saved to {savepath}")
 
-def standard_benchmark (func):
-    path = "Samples/standard_benchmark.json"
+def benchmark (type:str = 'standard', **kwargs):
+    assert type in ['standard', 'scaling']
+    path = f"Samples/{type}_benchmark.json"
     sample_set = json.load(open(path, 'r'))
-    benchamrk_report = []
+    n_deg = len(sample_set)
+    # print(sample_set[0][0])
+    benchmark_report = []
+    normalized_avg_runtime = 0.0
     for samples in sample_set:
         n, deg = len(samples), len(samples[0])
+        k = 10
+        print(f"Scoring {k} polynomials of degree {deg}...")
         runtimes = []
-        for sample in smaples:
+        i = 0
+        for sample in samples:
+            i += 1
+            if i > k:
+                break
             t = time.time()
             score(sample, **kwargs)
             runtimes.append(time.time() - t)
         mean_runtime = np.mean(runtimes)
+        normalized_avg_runtime += sum(runtimes) / deg
         median_runtime = np.median(runtimes)
         stddev_runtime = np.std(runtimes)
         max_runtime, min_runtime = np.max(runtimes), np.min(runtimes)
-        benchamrk_report.append({
-            'n_samples': n,
+        benchmark_report.append({
+            # 'n_samples': n,
             'degree': deg,
             'mean' : mean_runtime,
             'median': median_runtime,
@@ -213,14 +225,16 @@ def standard_benchmark (func):
             'max': max_runtime,
             'min': min_runtime
         })
+        print(f"Mean runtime: {mean_runtime:.6f}s")
+    normalized_avg_runtime /= n_deg * n     #Breaks if n is different for each degree
+    print(f"Normalized average runtime: {normalized_avg_runtime:.6f}s per degree")
 
-    df = pd.DataFrame(benchamrk_report)
-
+    df = pd.DataFrame(benchmark_report).set_index('degree')
     return df
     
 
 
 if __name__ == "__main__":
 
-   df = standard_benchmark(score)
+   df = benchmark('scaling',method='monte_carlo', n_pts=10**6)
    print(df)

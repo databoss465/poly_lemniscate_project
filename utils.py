@@ -288,14 +288,14 @@ if __name__ == "__main__":
     # dec = file_decoder(savepath, precision)
     # print(f"Decoded root positions: {dec[:5]}")  # Print first
 
-    degs = [10, 50, 100, 500, 1000]
-    # degs = [10, 20, 40, 80, 100, 140, 160, 200]
+    # degs = [10, 50, 100, 500, 1000]
+    degs = [10, 20, 40, 80, 100, 140, 160, 200]
     benchmark = []
     for deg in degs:
-        benchmark += generate_benchmark_samples(deg)
+        benchmark.append(generate_benchmark_samples(deg))
 
-    file = "Samples/scaling_benchmark.json"
-    # file = "Samples/standard_benchmark.json"
+    # file = "Samples/scaling_benchmark.json"
+    file = "Samples/standard_benchmark.json"
     with open(file, 'w') as f:
         json.dump(benchmark, f)
     
