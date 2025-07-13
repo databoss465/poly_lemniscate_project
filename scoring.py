@@ -113,16 +113,24 @@ def benchmark (type:str = 'standard', **kwargs):
 
 
 if __name__ == "__main__":
+    deg = 20
+    np.random.seed(42)
+    root_pos = canonical(np.random.uniform(0, 1, deg).tolist())
+    t = time.time()
+    s = score(root_pos, method='hybrid_amr')
+    t = time.time() - t
+    print(f"Score: {s}, Time taken: {t:.6f} seconds")
 
-   bm_type = 'scaling'  # or 'scaling'
-   df, navrt = benchmark(bm_type, method='monte_carlo_py', n_pts=10**6, n_threads = 8)
-#    print(df.head(25))
-   sns.boxplot(df, x='degree', y='runtime', hue='details')
-#    plt.suptitle('Standard Benchmarking', fontsize=16)
-   plt.suptitle('Scale Benchmarking', fontsize=16)
-   plt.title(f'Normalized Avg Runtime: {navrt*1000:.6f}ms', fontsize=12)
-   plt.xlabel('deg')
-   plt.ylabel('runtime (s)')
-#    plt.savefig(f'Images/standard_benchmarking_mcpy.png', dpi=300)
-   plt.savefig(f'Images/scale_benchmarking.png', dpi=300)
-   plt.close()
+
+#    bm_type = 'scaling'  # or 'scaling'
+#    df, navrt = benchmark(bm_type, method='monte_carlo_py', n_pts=10**6, n_threads = 8)
+# #    print(df.head(25))
+#    sns.boxplot(df, x='degree', y='runtime', hue='details')
+# #    plt.suptitle('Standard Benchmarking', fontsize=16)
+#    plt.suptitle('Scale Benchmarking', fontsize=16)
+#    plt.title(f'Normalized Avg Runtime: {navrt*1000:.6f}ms', fontsize=12)
+#    plt.xlabel('deg')
+#    plt.ylabel('runtime (s)')
+# #    plt.savefig(f'Images/standard_benchmarking_mcpy.png', dpi=300)
+#    plt.savefig(f'Images/scale_benchmarking.png', dpi=300)
+#    plt.close()

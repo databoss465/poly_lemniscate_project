@@ -43,29 +43,31 @@ def local_search (root_positions: list[float], max_steps:int=100, score_kwargs:d
     new_positions = root_positions.copy()
     new_score = initial_score
     improved = False
-    count = 0
+    step = 0
+    score_count = 0
 
     while not improved:
-        count += 1
+        step += 1
         i = np.random.randint(0, deg)
         delta = np.random.uniform(-0.05, 0.05)
 
         cddt_positions = new_positions.copy()
         cddt_positions[i] = (cddt_positions[i] + delta) % 1
         cddt_score = score(cddt_positions, **score_kwargs)  
+        score_count += 1
 
 
         if cddt_score >= initial_score:
             new_positions = cddt_positions
             new_score = cddt_score
-            # print(f"Intial score: {initial_score}, New score: {new_score}, Step: {count}, Changed position: {i}, Delta: {delta:.4f}")
+            # print(f"Intial score: {initial_score}, New score: {new_score}, Step: {step}, Changed position: {i}, Delta: {delta:.4f}")
             improved = True
 
-        elif count > max_steps:
-            # print(f"Failed to improve after {count} iterations. Returning original positions.")
+        elif step > max_steps:
+            # print(f"Failed to improve after {step} iterations. Returning original positions.")
             break
               
-    return new_positions, new_score, improved
+    return new_positions, new_score, improved, score_count
 
 def rep_local_search (root_positions: list[float], max_steps:int=100, reps:int=100, display_status:int=5, tolerance:int=10, score_kwargs:dict={}) -> list[complex]:
     """
@@ -75,8 +77,10 @@ def rep_local_search (root_positions: list[float], max_steps:int=100, reps:int=1
 
     new_positions = root_positions.copy()
     failed_attempts = 0
+    total_score_count = 0
     for i in range(reps):
-        new_positions, new_score, improved = local_search(new_positions, max_steps, score_kwargs)
+        new_positions, new_score, improved, score_count = local_search(new_positions, max_steps, score_kwargs)
+        total_score_count += score_count
         # if i % display_status == 0:
         #     print(f"Iteration {i+1}/{reps}: New score: {new_score:.4f}")
         
@@ -88,6 +92,7 @@ def rep_local_search (root_positions: list[float], max_steps:int=100, reps:int=1
         else:
             failed_attempts = 0
     
+    print (f"We called score {total_score_count} times in total")
     return canonical(new_positions), new_score
 
 # Worker function for parallel processing

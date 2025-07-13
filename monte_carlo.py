@@ -33,6 +33,19 @@ def monte_carlo_estimate_py (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n
 
     return area
 
+# C++ Monte Carlo implementation
+lib = ctypes.CDLL("/home/databoss465/poly_lemniscate_project/libmontecarlo.so")
+lib.monte_carlo_estimate.restype = ctypes.c_double
+lib.monte_carlo_estimate.argtypes = [
+    ctypes.POINTER (ctypes.c_double),  # pointer to roots_re 
+    ctypes.POINTER (ctypes.c_double),  # pointer to roots_im
+    ctypes.c_int,                      # degree
+    ctypes.c_double, ctypes.c_double,  # xmin, xmax
+    ctypes.c_double, ctypes.c_double,  # ymin, ymax
+    ctypes.c_int,                      # n_pts
+    ctypes.c_int                       # n_threads
+]
+
 def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pts=10**6, n_threads=2):
     """
     Estimate the area of the lemniscate using Monte Carlo method with C++ implementation.
