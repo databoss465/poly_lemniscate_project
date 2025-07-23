@@ -16,7 +16,7 @@ def score (root_positions: list[float], **kwargs) -> float:
     Since the objective is minimize the area, the score is `4 - area`.
 
     Keyword arguments:
-    - method: Method to use for area approximation ('monte_carlo' or 'hybrid_amr')
+    - method: monte_carlo, hybrid_amr, monte_carlo_py, hybrid_amr_py
     - n_pts: Number of points for Monte Carlo method (default: 10^6)
     - init_divs: Initial divisions for hybrid AMR (default: 8)
     - min_cell_size: Minimum cell size for hybrid AMR (default: 1e-5)
@@ -44,6 +44,8 @@ def score (root_positions: list[float], **kwargs) -> float:
         area = monte_carlo_estimate_py(roots, n_pts=n_pts)
     elif method == 'hybrid_amr_py':
         area = hybrid_amr_py(roots, init_divs=init_divs, min_cell_size=min_cell_size, max_depth=max_depth)
+    elif method == 'monte_carlo_cuda':
+        area = monte_carlo_estimate_cuda(roots, n_pts=n_pts, n_threads=n_threads)
     else:
         raise ValueError(f"Unknown method: {method}")
 
@@ -75,6 +77,14 @@ def score_file (path: str, savepath: str, precision: int = 16, **kwargs) -> floa
     print(f"Root positions and scores saved to {savepath}")
 
 def benchmark (type:str = 'standard', **kwargs):
+    """
+        Keyword arguments:
+    - method: monte_carlo, hybrid_amr, monte_carlo_py, hybrid_amr_py
+    - n_pts: Number of points for Monte Carlo method (default: 10^6)
+    - init_divs: Initial divisions for hybrid AMR (default: 8)
+    - min_cell_size: Minimum cell size for hybrid AMR (default: 1e-5)
+    - max_depth: Maximum depth for hybrid AMR (default: 11)
+    """
     assert type in ['standard', 'scaling']
     path = f"Samples/{type}_benchmark.json"
     sample_set = json.load(open(path, 'r'))
@@ -114,15 +124,18 @@ def benchmark (type:str = 'standard', **kwargs):
 
 if __name__ == "__main__":
 
-   bm_type = 'scaling'
-   df, navrt = benchmark(bm_type, method='hybrid_amr', init_divs=8, min_cell_size=1e-5, max_depth=11)
-#    print(df.head(25))
-   sns.boxplot(df, x='degree', y='runtime', hue='details')
+#    bm_type = 'standard'
+#    df, navrt = benchmark(bm_type, method='monte_carlo_cuda')
+# #    print(df.head(25))
+#    sns.boxplot(df, x='degree', y='runtime', hue='details')
 #    plt.suptitle('Standard Benchmarking', fontsize=16)
-   plt.suptitle('Scale Benchmarking', fontsize=16)
-   plt.title(f'Normalized Avg Runtime: {navrt*1000:.6f}ms', fontsize=12)
-   plt.xlabel('deg')
-   plt.ylabel('runtime (s)')
-#    plt.savefig(f'Images/standard_benchmarking_amr_mem.png', dpi=300)
-   plt.savefig(f'Images/scale_benchmarking_amr_mem.png', dpi=300)
-   plt.close()
+#    plt.suptitle('Scale Benchmarking', fontsize=16)
+#    plt.title(f'Normalized Avg Runtime: {navrt*1000:.6f}ms', fontsize=12)
+#    plt.xlabel('deg')
+#    plt.ylabel('runtime (s)')
+#    plt.savefig(f'Images/standard_benchmarking_mc.png', dpi=300)
+# #    plt.savefig(f'Images/scale_benchmarking_mc.png', dpi=300)
+#    plt.close()
+    root_pos = np.random.uniform(0, 1, 1000).tolist()
+    s = score(root_pos, method='monte_carlo_cuda', n_pts=10**6)
+    print(f"Score: {s:.6f}")

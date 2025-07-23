@@ -12,15 +12,9 @@ extern "C" double monte_carlo_estimate (
 
         omp_set_num_threads(n_threads);
 
-        // Array of roots as complex numbers
-        std::vector<std::complex<double>> roots(degree);
-        for (int i = 0; i < degree; ++i) {
-            roots.emplace_back(roots_re[i], roots_im[i]);
-        }
-
-        // Build polynomial coefficients
         std::vector<std::complex<double>> coeffs = {1.0};
-        for (const auto& root : roots) {
+        for (int i = 0; i < degree; ++i) {
+            std::complex<double> root(roots_re[i], roots_im[i]);
             std::vector<std::complex<double>> new_coeffs(coeffs.size() + 1, 0.0);
             for (size_t j = 0; j < coeffs.size(); ++j) {
                 new_coeffs[j] += -root * coeffs[j];

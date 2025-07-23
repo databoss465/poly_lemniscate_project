@@ -72,3 +72,43 @@ def monte_carlo_estimate_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), 
     )
     
     return area
+
+culib = ctypes.CDLL("/home/databoss465/poly_lemniscate_project/libcuda_mc.so")
+culib.monte_carlo_estimate_cuda.restype = ctypes.c_double
+culib.monte_carlo_estimate_cuda.argtypes = [
+    ctypes.POINTER(ctypes.c_double),  # pointer to roots_re
+    ctypes.POINTER(ctypes.c_double),  # pointer to roots_im
+    ctypes.c_int,                     # degree
+    ctypes.c_double, ctypes.c_double, # xmin, xmax
+    ctypes.c_double, ctypes.c_double, # ymin, ymax
+    ctypes.c_int,                     # n_pts
+    ctypes.c_int                      # n_threads
+]
+
+def monte_carlo_estimate_cuda (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), n_pts=10**6, n_threads=256):
+    """
+    Estimate the area of the lemniscate using Monte Carlo method with CUDA implementation.
+
+    Parameters:
+    - roots: List of complex roots of the polynomial.
+    - xlim, ylim: The limits for the x and y axes.
+    - n_pts: Number of random samples to generate.
+    - n_threads: Number of threads per block in the CUDA kernel.
+
+    Returns:
+    - area: Estimated area of the lemniscate.
+    """
+    degree = len(roots)
+    roots_re = np.array([r.real for r in roots], dtype=np.double)
+    roots_im = np.array([r.imag for r in roots], dtype=np.double)
+
+    area = culib.monte_carlo_estimate_cuda(
+        roots_re.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        roots_im.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        degree,
+        xlim[0], xlim[1],
+        ylim[0], ylim[1],
+        n_pts, n_threads
+    )
+    
+    return area
