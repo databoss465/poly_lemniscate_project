@@ -91,6 +91,7 @@ def benchmark (type:str = 'standard', **kwargs):
     n_deg = len(sample_set)
 
     method = kwargs.get('method', 'default')
+    print(f"Benchmarking with method: {method}")
 
     deets = f"{method}_" + "_".join(f"{k[0]}{v}" for k, v in kwargs.items() if k != 'method')
 
@@ -123,19 +124,41 @@ def benchmark (type:str = 'standard', **kwargs):
 
 
 if __name__ == "__main__":
+    bm_type = 'standard'
+    methods = ['monte_carlo', 'hybrid_amr', 'monte_carlo_cuda']
+    std_df = pd.DataFrame(columns=['degree', 'runtime', 'details'])
+    navrts = []
+    for method in methods:
+        df, navrt = benchmark(type=bm_type, method=method)
+        std_df = pd.concat([std_df, df], ignore_index=True)
+        navrts.append(navrt)
+    print(f"Standard Benchmarking completed")
+    print(f"Normalized Average Runtimes: {navrts}")
 
-#    bm_type = 'standard'
-#    df, navrt = benchmark(bm_type, method='monte_carlo_cuda')
-# #    print(df.head(25))
-#    sns.boxplot(df, x='degree', y='runtime', hue='details')
-#    plt.suptitle('Standard Benchmarking', fontsize=16)
-#    plt.suptitle('Scale Benchmarking', fontsize=16)
-#    plt.title(f'Normalized Avg Runtime: {navrt*1000:.6f}ms', fontsize=12)
-#    plt.xlabel('deg')
-#    plt.ylabel('runtime (s)')
-#    plt.savefig(f'Images/standard_benchmarking_mc.png', dpi=300)
-# #    plt.savefig(f'Images/scale_benchmarking_mc.png', dpi=300)
-#    plt.close()
-    root_pos = np.random.uniform(0, 1, 1000).tolist()
-    s = score(root_pos, method='monte_carlo_cuda', n_pts=10**6)
-    print(f"Score: {s:.6f}")
+    bm_type = 'scaling'
+    scale_df = pd.DataFrame(columns=['degree', 'runtime', 'details'])
+    for method in methods:
+        df, navrt = benchmark(type=bm_type, method=method)
+        scale_df = pd.concat([scale_df, df], ignore_index=True)
+        navrts.append(navrt)
+    print(f"Scaling Benchmarking completed")
+    print(f"Normalized Average Runtimes: {navrts}")
+    
+    # Save the DataFrames to CSV files
+    std_df.to_csv(f'Samples/{bm_type}_benchmarking_std.csv', index=False)
+    scale_df.to_csv(f'Samples/{bm_type}_benchmarking_scale.csv', index=False)
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 6))
+    sns.boxplot(data=std_df, x='degree', y='runtime', hue='details', ax=axes[0], showfliers=False)
+    axes[0].set_title('Standard Benchmarking')
+    axes[0].set_xlabel('Degree')
+    axes[0].set_ylabel('Runtime (s)')
+    axes[0].legend(title='Details', loc='upper left')
+    sns.boxplot(data=scale_df, x='degree', y='runtime', hue='details', ax=axes[1], showfliers=False)
+    axes[1].set_title('Scaling Benchmarking')
+    axes[1].set_xlabel('Degree')
+    axes[1].set_ylabel('Runtime (s)')
+    axes[1].legend(title='Details', loc='upper left')
+    plt.tight_layout()
+    plt.savefig(f'Images/Benchmarking.png', dpi=300)
+    plt.close(fig)
