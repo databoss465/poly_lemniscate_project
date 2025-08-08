@@ -124,12 +124,22 @@ def benchmark (type:str = 'standard', **kwargs):
 
 
 if __name__ == "__main__":
+    run = 3
     bm_type = 'standard'
     methods = ['monte_carlo', 'hybrid_amr', 'monte_carlo_cuda']
+    mc_kwargs = {'n_pts': 10**6, 'n_threads': 16}
+    amr_kwargs = {'init_divs': 10, 'min_cell_size': 1e-6, 'max_depth': 11}
+    cumc_kwargs = {'n_pts': 10**6}
     std_df = pd.DataFrame(columns=['degree', 'runtime', 'details'])
     navrts = []
     for method in methods:
-        df, navrt = benchmark(type=bm_type, method=method)
+        if method == 'monte_carlo':
+            kwargs = mc_kwargs
+        elif method == 'monte_carlo_cuda':
+            kwargs = cumc_kwargs
+        elif method == 'hybrid_amr':
+            kwargs = amr_kwargs
+        df, navrt = benchmark(type=bm_type, method=method, **kwargs)
         std_df = pd.concat([std_df, df], ignore_index=True)
         navrts.append(navrt)
     print(f"Standard Benchmarking completed")
@@ -138,11 +148,18 @@ if __name__ == "__main__":
     bm_type = 'scaling'
     scale_df = pd.DataFrame(columns=['degree', 'runtime', 'details'])
     for method in methods:
-        df, navrt = benchmark(type=bm_type, method=method)
+        if method == 'monte_carlo':
+            kwargs = mc_kwargs
+        elif method == 'monte_carlo_cuda':
+            kwargs = cumc_kwargs
+        elif method == 'hybrid_amr':
+            kwargs = amr_kwargs
+        df, navrt = benchmark(type=bm_type, method=method, **kwargs)
         scale_df = pd.concat([scale_df, df], ignore_index=True)
         navrts.append(navrt)
     print(f"Scaling Benchmarking completed")
-    print(f"Normalized Average Runtimes: {navrts}")
+    navrts = [n*1000 for n in navrts]
+    print(f"Normalized Average Runtimes (ms): {navrts}")
     
     # Save the DataFrames to CSV files
     std_df.to_csv(f'Samples/{bm_type}_benchmarking_std.csv', index=False)
@@ -160,5 +177,5 @@ if __name__ == "__main__":
     axes[1].set_ylabel('Runtime (s)')
     axes[1].legend(title='Details', loc='upper left')
     plt.tight_layout()
-    plt.savefig(f'Images/Benchmarking.png', dpi=300)
+    plt.savefig(f'Images/Benchmarking{run}.png', dpi=300)
     plt.close(fig)
