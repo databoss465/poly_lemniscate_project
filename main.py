@@ -96,37 +96,44 @@ def rep_local_search (root_positions: list[float], max_steps:int=100, reps:int=1
     return canonical(new_positions), new_score
 
 # Worker function for parallel processing
-def populator (bs:int, deg: int, max_steps:int=100, reps:int=100, tolerance:int=10, score_kwargs:dict={})  -> list[tuple[list[float], float]]:
+def populator (bs:int, deg_range:tuple[int, int], max_steps:int=100, reps:int=100, tolerance:int=10, score_kwargs:dict={})  -> list[tuple[list[float], float]]:
     """
     Worker function for parallel processing.
     Generates a random set of root positions and runs local search on them.
     Returns a list of tuples containing the root positions and the score.
     """
+    assert deg_range[0] < deg_range[1]
+
     results = []
+    degrees = []
     np.random.seed(os.getpid())  # Ensure different seed for each worker
     # improvement_count = 0
 
     for _ in tqdm(range(bs), desc="Worker progress", position=0, leave=False):
-        root_positions = canonical(np.random.uniform(0, 1, deg).tolist())
+        degree = int(np.random.choice(np.arange(*deg_range)))
+        degrees.append(degree)
+        root_positions = canonical(np.random.uniform(0, 1, degree).tolist())
         # scr = score(root_positions, **score_kwargs)
         new_positions, new_score = rep_local_search(root_positions, max_steps=max_steps, reps=reps, tolerance=tolerance, score_kwargs=score_kwargs)
         # new_positions, new_score, improved, _ = local_search(root_positions, 10, score_kwargs=score_kwargs)
-        results.append((new_positions, new_score))
+        results.append((new_positions, degree, new_score))
         # if improved:
         #     improvement_count += 1
         # results.append((root_positions, scr))
     # print(f'Improved {improvement_count}/{bs}')
+    print(set(degrees))
+    print(f'Max: {max(degrees)} || Min: {min(degrees)}')
     return results
 
 
 
-def generate_population (pop_size:int, deg:int, max_steps:int=100, reps:int=100, tolerance:int=10, score_kwargs:dict={}, num_workers: int = 12) -> pd.DataFrame:
+def generate_population (pop_size:int, deg_range:tuple[int, int], max_steps:int=100, reps:int=100, tolerance:int=10, score_kwargs:dict={}, num_workers: int = 8) -> pd.DataFrame:
     """
     Generate a sorted population of canonical root positions using parallel processing.
 
     Parameters:
     - pop_size: Total number of root configs to generate
-    - deg: Degree of the polynomial
+    - deg_range: Maximum and minimum degree to randomly choose from
     - max_steps: Maximum number of times for local search to try and improve the score
     - reps: Number of repetitions of the local search to be applied
     - tolerance: Number of consecutive failed attempts before stopping local search
@@ -134,15 +141,15 @@ def generate_population (pop_size:int, deg:int, max_steps:int=100, reps:int=100,
     """
 
     bs = pop_size // num_workers
-    args = [(bs, deg, max_steps, reps, tolerance, score_kwargs) for _ in range(num_workers)]
+    args = [(bs, deg_range, max_steps, reps, tolerance, score_kwargs) for _ in range(num_workers)]
 
-    print(f"Generating population of {pop_size} root positions with degree {deg} using {num_workers} workers...")
+    print(f"Generating population of {pop_size} root positions with degree in between {deg_range[0]} and {deg_range[1]} using {num_workers} workers...")
     with Pool(processes=num_workers) as pool:
             all_batches = pool.starmap(populator, args)
 
     # Flatten the list of lists
     population = [item for batch in all_batches for item in batch]
-    df = pd.DataFrame(population, columns=['root_positions', 'score'])
+    df = pd.DataFrame(population, columns=['root_positions', 'degree', 'score'])
     df['root_positions'] = df['root_positions'].apply(lambda x: canonical(x))
     df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
 
@@ -152,8 +159,8 @@ def generate_population (pop_size:int, deg:int, max_steps:int=100, reps:int=100,
 
 if __name__ == "__main__":
 
-    deg = 15
-    total_pop = 10001
+    deg_range = (50, 200)
+    total_pop = 10000
     max_steps = 10
     reps = 10
     tolerance = reps/5
@@ -162,15 +169,15 @@ if __name__ == "__main__":
     # score_kwargs = {'method': 'monte_carlo'}
 
     filepath = "Samples"
-    filename = f"population{total_pop}_deg{deg}_dec.csv"
+    filename = f"population{total_pop}_deg{deg_range[0]}_{deg_range[1]}.csv"
     plotpath = "Images"
-    plotname = f"population{total_pop}_deg{deg}_dec.png"
+    plotname = f"population{total_pop}_deg{deg_range[0]}_{deg_range[1]}.png"
 
     # population_df = pd.read_csv(os.path.join(filepath, filename))
     
     t = time.time()
     #Generate the population
-    population_df = generate_population(total_pop, deg, max_steps=max_steps, reps=reps, tolerance=tolerance, score_kwargs=score_kwargs, num_workers=8)
+    population_df = generate_population(total_pop, deg_range, max_steps=max_steps, reps=reps, tolerance=tolerance, score_kwargs=score_kwargs, num_workers=8)
     #Check distinct values
     pct = population_df['root_positions'].apply(tuple).nunique()/len(population_df)*100
     print(f'{pct:.3f}% Distinct values')
@@ -179,11 +186,12 @@ if __name__ == "__main__":
     t = time.time() - t
     print(f"Population generated and saved to {os.path.join(filepath, filename)} in {t:.2f}s.")
 
-    plt.hist(population_df['score'], bins=20, color='cyan', alpha=0.7, edgecolor='black')
-    plt.title(f"Score Distribution for Degree {deg} Population, generated by Makemore")
+    # plt.hist(population_df['score'], bins=20, color='cyan', alpha=0.7, edgecolor='black')
+    plt.hist2d(population_df['score'], population_df['degree'], bins=(20,20), cmap='viridis')
+    plt.title(f"Score Distribution across Degrees {deg_range[0]}-{deg_range[1]}")
     plt.xlabel("Score")
-    plt.ylabel("Frequency")
-    plt.grid(True)
+    plt.ylabel("Degree")
+    # plt.grid(True)
     plt.tight_layout()
     plt.savefig(os.path.join(plotpath, plotname), dpi=300)
     plt.close()
