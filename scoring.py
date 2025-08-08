@@ -39,7 +39,7 @@ def score (root_positions: list[float], **kwargs) -> float:
     if method == 'monte_carlo':
         area = monte_carlo_estimate_cpp(roots, n_pts=n_pts, n_threads=n_threads)
     elif method == 'hybrid_amr':
-        area = hybrid_amr_cpp(roots, init_divs=init_divs, min_cell_size=min_cell_size, max_depth=max_depth)
+        area = hybrid_amr_cpp(roots, init_divs=init_divs, min_cell_size=min_cell_size, max_depth=max_depth, n_threads=n_threads)
     elif method == 'monte_carlo_py':
         area = monte_carlo_estimate_py(roots, n_pts=n_pts)
     elif method == 'hybrid_amr_py':

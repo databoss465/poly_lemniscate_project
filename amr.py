@@ -101,11 +101,12 @@ lib_amr.hybrid_amr_estimate.argtypes = [
     ctypes.c_double, ctypes.c_double, # ymin, ymax
     ctypes.c_int,                     # init_divs
     ctypes.c_double,                  # min_cell_size
-    ctypes.c_int                      # max_depth
+    ctypes.c_int,                      # max_depth
+    ctypes.c_int                       # n_threads
 ]
 
 def hybrid_amr_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), init_divs=8,
-                     min_cell_size=1e-3, max_depth=5):
+                     min_cell_size=1e-3, max_depth=5, n_threads=4):
     """
     Estimate the area of the lemniscate using a hybrid adaptive mesh refinement technique with C++ implementation.
     This function divides the area into `init_divs` squares, and then refines the mesh recursively based on corners 
@@ -119,6 +120,6 @@ def hybrid_amr_cpp (roots: list[complex], xlim=(-2, 2), ylim=(-2, 2), init_divs=
         roots_re.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         roots_im.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
         degree, xlim[0], xlim[1], ylim[0], ylim[1],
-        init_divs, min_cell_size, max_depth)
+        init_divs, min_cell_size, max_depth, n_threads)
 
     return area

@@ -9,7 +9,7 @@
 extern "C" double hybrid_amr_estimate(
     const double* roots_re, const double* roots_im, int degree,
     double x_min, double x_max, double y_min, double y_max, int initial_divs,
-    double min_cell_size, int max_depth);
+    double min_cell_size, int max_depth, int n_threads);
 
 using Complex = std::complex<double>;
 using CVector = std::vector<Complex>;
@@ -106,7 +106,9 @@ double recursive_refine(
 extern "C" double hybrid_amr_estimate(
     const double* roots_re, const double* roots_im, int degree,
     double x_min, double x_max, double y_min, double y_max,
-    int initial_divs, double min_cell_size, int max_depth) {
+    int initial_divs, double min_cell_size, int max_depth, int n_threads) {
+
+    omp_set_num_threads(n_threads);
 
     CVector coeffs = build_coefficients(roots_re, roots_im, degree);
     double total_area = 0.0;
